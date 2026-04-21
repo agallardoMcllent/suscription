@@ -14,7 +14,7 @@ spec:
         app: suscription
     spec:
       containers:
-        - name: vsee
+        - name: suscription
           image: acrhpdevmex.azurecr.io/suscription:latest
           ports:
             - containerPort: 8080
