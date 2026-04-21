@@ -9,5 +9,5 @@ public class SuscriptionApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(SuscriptionApplication.class, args);
 	}
-
+//test
 }
