@@ -1,0 +1,88 @@
+name: Build and Deploy Suscription to AKS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AKS_RESOURCE_GROUP: ${{ secrets.AKS_RESOURCE_GROUP }}
+  AKS_CLUSTER_NAME: ${{ secrets.AKS_CLUSTER_NAME }}
+  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  NAMESPACE: apps
+  APP_NAME: suscription
+  IMAGE_REPOSITORY: healthpod/dev/suscription
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set image variables
+        run: |
+          echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+          echo "IMAGE_FULL=${ACR_LOGIN_SERVER}/${IMAGE_REPOSITORY}:${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - name: Login to ACR
+        run: |
+          ACR_NAME=$(echo "${ACR_LOGIN_SERVER}" | cut -d '.' -f 1)
+          az acr login --name "${ACR_NAME}"
+
+      - name: Build Docker image
+        run: |
+          docker build -t "${IMAGE_FULL}" .
+
+      - name: Push Docker image
+        run: |
+          docker push "${IMAGE_FULL}"
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+
+      - name: Ensure namespace exists
+        run: |
+          kubectl get namespace "${NAMESPACE}" || kubectl create namespace "${NAMESPACE}"
+
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f k8s/suscription/suscription-dev.yml -n "${NAMESPACE}"
+
+      - name: Update image
+        run: |
+          kubectl set image deployment/${APP_NAME} ${APP_NAME}="${IMAGE_FULL}" -n "${NAMESPACE}"
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout restart deployment/${APP_NAME} -n "${NAMESPACE}"
+          kubectl rollout status deployment/${APP_NAME} -n "${NAMESPACE}" --timeout=300s
+
+      - name: Show deployed image
+        run: |
+          echo "Deployed image: ${IMAGE_FULL}"

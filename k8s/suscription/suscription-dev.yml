@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suscription
+  namespace: apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suscription
+  template:
+    metadata:
+      labels:
+        app: suscription
+    spec:
+      containers:
+        - name: vsee
+          image: acrhpdevmex.azurecr.io/suscription:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: sql-db-secret
+            - configMapRef:
+                name: healthpod-configmap
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suscription
+  namespace: apps
+spec:
+  selector:
+    app: suscription
+  ports:
+    - port: 80
+      targetPort: 8080
