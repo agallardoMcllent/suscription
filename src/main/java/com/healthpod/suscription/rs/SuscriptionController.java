@@ -15,7 +15,7 @@ public class SuscriptionController {
     @Autowired
     SuscriptionService suscriptionService;
 
-    @GetMapping("/suscription/conexion")
+    @GetMapping("/conexion")
     public ResponseEntity<Resultado> testLogin() {
         return suscriptionService.testConexionSVC();
     }
