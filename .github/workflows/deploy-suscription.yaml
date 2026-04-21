@@ -86,3 +86,5 @@ jobs:
       - name: Show deployed image
         run: |
           echo "Deployed image: ${IMAGE_FULL}"
+          
+          
