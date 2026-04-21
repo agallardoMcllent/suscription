@@ -26,6 +26,7 @@ public class SuscriptionController {
     public ResponseEntity<Resultado> testLogin(Request request) {
         Resultado r=new Resultado();
         r.setMensaje(request.getMensaje());
+        r.setRes(request.getCode());
         return ResponseEntity.ok(r);
     }
 }
